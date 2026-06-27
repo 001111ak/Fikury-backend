@@ -3,25 +3,25 @@ import express from 'express';
 import cors from 'cors';
 import { GoogleGenAI } from '@google/genai';
 
-// Load environment variables from .env (only for local development)
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Initialize AI with API key from environment
+// Check API key at startup
+if (!process.env.GOOGLE_API_KEY) {
+  console.error('❌ GOOGLE_API_KEY is missing!');
+}
+
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
 
-// --- Health check endpoint (optional, but useful) ---
 app.get('/', (req, res) => {
   res.json({ status: 'OK', message: 'Fikury Backend is running' });
 });
 
-// --- Main AI endpoint ---
 app.post('/api/ai', async (req, res) => {
   const { prompt } = req.body;
   if (!prompt) {
@@ -29,18 +29,24 @@ app.post('/api/ai', async (req, res) => {
   }
 
   try {
+    // Try with gemini-1.5-flash (more stable) as fallback
+    let model = 'gemini-1.5-flash';
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: model,
       contents: prompt,
     });
     res.json({ result: response.text });
   } catch (error) {
     console.error('AI Error:', error);
-    res.status(500).json({ error: error.message });
+    // Send back detailed error for debugging
+    res.status(500).json({ 
+      error: error.message,
+      details: error.stack,
+      code: error.code || 'unknown'
+    });
   }
 });
 
-// --- Start server, binding to ALL network interfaces (required for Render) ---
 app.listen(port, '0.0.0.0', () => {
   console.log(`Server running on port ${port}`);
 });
