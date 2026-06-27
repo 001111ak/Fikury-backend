@@ -11,9 +11,10 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Check API key at startup
 if (!process.env.GOOGLE_API_KEY) {
   console.error('❌ GOOGLE_API_KEY is missing!');
+} else {
+  console.log('✅ GOOGLE_API_KEY is set');
 }
 
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
@@ -29,20 +30,16 @@ app.post('/api/ai', async (req, res) => {
   }
 
   try {
-    // Try with gemini-1.5-flash (more stable) as fallback
-    let model = 'gemini-1.5-flash';
     const response = await ai.models.generateContent({
-      model: model,
+      model: 'gemini-1.5-flash',
       contents: prompt,
     });
     res.json({ result: response.text });
   } catch (error) {
     console.error('AI Error:', error);
-    // Send back detailed error for debugging
-    res.status(500).json({ 
+    res.status(500).json({
       error: error.message,
-      details: error.stack,
-      code: error.code || 'unknown'
+      stack: error.stack
     });
   }
 });
