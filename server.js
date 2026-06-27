@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { GoogleGenAI } from '@google/genai';
 
+// Load environment variables from .env (only for local development)
 dotenv.config();
 
 const app = express();
@@ -15,7 +16,12 @@ app.use(express.json());
 // Initialize AI with API key from environment
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY });
 
-// Endpoint to get AI response
+// --- Health check endpoint (optional, but useful) ---
+app.get('/', (req, res) => {
+  res.json({ status: 'OK', message: 'Fikury Backend is running' });
+});
+
+// --- Main AI endpoint ---
 app.post('/api/ai', async (req, res) => {
   const { prompt } = req.body;
   if (!prompt) {
@@ -34,7 +40,7 @@ app.post('/api/ai', async (req, res) => {
   }
 });
 
-// Start server
-app.listen(port, () => {
+// --- Start server, binding to ALL network interfaces (required for Render) ---
+app.listen(port, '0.0.0.0', () => {
   console.log(`Server running on port ${port}`);
 });
