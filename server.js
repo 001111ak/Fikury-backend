@@ -8,13 +8,16 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 10000;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
+// Health Check Route
 app.get('/', (req, res) => {
     res.json({ status: "healthy", message: "Fikury-backend engine is running cleanly." });
 });
 
+// AI Chat Endpoint
 app.post('/api/chat', async (req, res) => {
     try {
         const userPrompt = req.body.message || req.body.prompt;
@@ -23,33 +26,52 @@ app.post('/api/chat', async (req, res) => {
             return res.status(400).json({ error: "Message or prompt field parameter is missing." });
         }
 
+        // Accepts GOOGLE_API_KEY or GEMINI_API_KEY from environment
         const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
-            return res.status(500).json({ error: "API key missing on server." });
+            console.error("API key environment variable is missing on Render.");
+            return res.status(500).json({ error: "API key missing on backend server." });
         }
 
+        // Initialize Gemini AI Client
         const ai = new GoogleGenAI({ apiKey });
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: userPrompt,
-        });
+        // List of models to try in priority order to prevent 404 errors
+        const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+        let response = null;
+        let lastError = null;
+
+        for (const modelName of modelsToTry) {
+            try {
+                response = await ai.models.generateContent({
+                    model: modelName,
+                    contents: userPrompt,
+                });
+                if (response && response.text) break;
+            } catch (err) {
+                console.warn(`Model ${modelName} unavailable, attempting fallback:`, err.message);
+                lastError = err;
+            }
+        }
+
+        if (!response) {
+            throw lastError || new Error("All model fallback attempts failed.");
+        }
 
         return res.status(200).json({
             reply: response.text || "No response returned from Gemini."
         });
 
     } catch (error) {
-        console.error("Chat failure detail:", error);
-        // Expose the real error details so we can fix it immediately
+        console.error("Chat pipeline error:", error);
         return res.status(500).json({ 
             error: "Gemini execution failed", 
-            details: error.message || String(error) 
+            details: error.message || "Internal core engine operational failure." 
         });
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Server listening on port ${PORT}`);
+    console.log(`🚀 Server running on port ${PORT}`);
 });
