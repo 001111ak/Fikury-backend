@@ -8,16 +8,13 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Health Check Route
 app.get('/', (req, res) => {
     res.json({ status: "healthy", message: "Fikury-backend engine is running cleanly." });
 });
 
-// AI Chat Endpoint
 app.post('/api/chat', async (req, res) => {
     try {
         const userPrompt = req.body.message || req.body.prompt;
@@ -26,15 +23,12 @@ app.post('/api/chat', async (req, res) => {
             return res.status(400).json({ error: "Message or prompt field parameter is missing." });
         }
 
-        // Accepts GOOGLE_API_KEY or GEMINI_API_KEY from environment
         const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
-            console.error("API key environment variable is missing on Render.");
-            return res.status(500).json({ error: "API key missing on backend server." });
+            return res.status(500).json({ error: "API key missing on server." });
         }
 
-        // Initialize Gemini AI Client
         const ai = new GoogleGenAI({ apiKey });
 
         const response = await ai.models.generateContent({
@@ -47,11 +41,15 @@ app.post('/api/chat', async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Chat pipeline error:", error);
-        return res.status(500).json({ error: "Internal core engine operational failure." });
+        console.error("Chat failure detail:", error);
+        // Expose the real error details so we can fix it immediately
+        return res.status(500).json({ 
+            error: "Gemini execution failed", 
+            details: error.message || String(error) 
+        });
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`🚀 Server listening on port ${PORT}`);
 });
