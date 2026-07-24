@@ -36,7 +36,7 @@ app.post('/api/chat', async (req, res) => {
         console.log(`Received user payload: "${userPrompt}"`);
 
         // Check if API key is set
-        if (!process.env.GEMINI_API_KEY) {
+        if (!process.env.GOOGLE_API_KEY) {
             console.error("GEMINI_API_KEY environment variable is missing.");
             return res.status(500).json({ error: "Gemini API key missing on backend server." });
         }
